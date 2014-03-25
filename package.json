@@ -1,0 +1,35 @@
+{
+  "name": "spider-stream",
+  "version": "0.0.0",
+  "description": "spider a directory and turn it into a stream",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "node test/test.js | tspec"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/calvinmetcalf/spider-stream.git"
+  },
+  "keywords": [
+    "stream",
+    "dir",
+    "file"
+  ],
+  "author": "Calvin Metcalf <cmetcalf@appgeo.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/calvinmetcalf/spider-stream/issues"
+  },
+  "homepage": "https://github.com/calvinmetcalf/spider-stream",
+  "dependencies": {
+    "readable-stream": "^1.0.26-2"
+  },
+  "devDependencies": {
+    "tape": "^2.12.0",
+    "tap-spec": "^0.1.6",
+    "mkdirp": "^0.3.5"
+  }
+}
