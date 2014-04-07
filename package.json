@@ -25,7 +25,8 @@
   },
   "homepage": "https://github.com/calvinmetcalf/spider-stream",
   "dependencies": {
-    "readable-stream": "^1.0.26-2"
+    "readable-stream": "^1.0.26-2",
+    "minimatch": "^0.2.14"
   },
   "devDependencies": {
     "tape": "^2.12.0",

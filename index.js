@@ -2,19 +2,25 @@ var Readable = require('readable-stream').Readable;
 var fs = require('fs');
 var path = require('path');
 var util = require('util');
+var minimatch = require('minimatch');
 
 module.exports = SpiderStream;
 util.inherits(SpiderStream, Readable);
 
-function SpiderStream(inPath) {
+function SpiderStream(inPath, ignore) {
   if (!(this instanceof SpiderStream)) {
-    return new SpiderStream(inPath);
+    return new SpiderStream(inPath, ignore);
   }
-
   Readable.call(this, {
     objectMode: true
   });
-
+  if (Array.isArray(ignore)) {
+    this.ignoreList = ignore;
+  } else if (ignore === false) {
+    this.ignoreList = [];
+  } else if (typeof ignore === 'function') {
+    this.isIgnored = ignore;
+  }
   this.paths = [path.resolve(inPath)];
   this.inProgress = 0;
 }
@@ -43,14 +49,16 @@ SpiderStream.prototype._read = function () {
       var fullPath = path.join(current, file);
       fs.stat(fullPath, function (err, stats) {
         todo--;
-        if (stats.isFile()) {
-          toPush.push(fullPath);
-        } else if (stats.isDirectory()) {
-          self.paths.push(fullPath);
+        if (!self.isIgnored(file, fullPath)) {
+          if (stats.isFile()) {
+            toPush.push(fullPath);
+          } else if (stats.isDirectory()) {
+            self.paths.push(fullPath);
+          }
         }
-       if (!todo) {
-        self.inProgress--;
-         if (!toPush.length) {
+        if (!todo) {
+          if (!toPush.length) {
+            self.inProgress--;
             self._read();
          } else {
           var full;
@@ -58,13 +66,24 @@ SpiderStream.prototype._read = function () {
             if(!self.push(thing)) {
               full = true;
             }
-            if (!full) {
-              self._read();
-            }
           });
+          if (!full) {
+            self.inProgress--;
+            self._read();
+          }
          }
        }
       });
     });
+  });
+};
+SpiderStream.prototype.ignoreList = [
+  '.git',
+  '.DS_Store',
+  '*~'
+];
+SpiderStream.prototype.isIgnored = function (thing) {
+  return this.ignoreList.some(function (term) {
+    return minimatch(thing, term);
   });
 };
