@@ -1,6 +1,6 @@
 {
   "name": "spider-stream",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "spider a directory and turn it into a stream",
   "main": "index.js",
   "directories": {
