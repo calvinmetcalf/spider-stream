@@ -1,89 +1,64 @@
-var Readable = require('readable-stream').Readable;
 var fs = require('fs');
 var path = require('path');
-var util = require('util');
+var noms = require('noms');
 var minimatch = require('minimatch');
 
-module.exports = SpiderStream;
-util.inherits(SpiderStream, Readable);
+module.exports = spiderStream;
 
-function SpiderStream(inPath, ignore) {
-  if (!(this instanceof SpiderStream)) {
-    return new SpiderStream(inPath, ignore);
-  }
-  Readable.call(this, {
-    objectMode: true
-  });
+function spiderStream(inPath, ignore) {
+  var ignoreList =[
+    '.git',
+    '.DS_Store',
+    '*~'
+  ];
+  var isIgnored = function (thing) {
+    return ignoreList.some(function (term) {
+      return minimatch(thing, term);
+    });
+  };
   if (Array.isArray(ignore)) {
-    this.ignoreList = ignore;
+    ignoreList = ignore;
   } else if (ignore === false) {
-    this.ignoreList = [];
+    ignoreList = [];
   } else if (typeof ignore === 'function') {
-    this.isIgnored = ignore;
+    isIgnored = ignore;
   }
-  this.paths = [path.resolve(inPath)];
-  this.inProgress = 0;
-}
-
-SpiderStream.prototype._read = function () {
-  var self = this;
-  var current = this.paths.pop();
-  if (!current) {
-    if (!self.inProgress) {
-      self.push(null);
+  var stack = [path.resolve(inPath)];
+  return noms(function(next) {
+    if (!stack.length) {
+      //we are done
+      return next(null, null);
     }
-    return;
-  }
-  self.inProgress++;
-  fs.readdir(current, function (err, paths) {
-    if (err) {
-      return self.emit('error', err);
-    }
-    var todo = paths.length;
-    if (!todo) {
-      self.inProgress--;
-      self._read();
-    }
-    var toPush = [];
-    paths.forEach(function (file) {
-      var fullPath = path.join(current, file);
-      fs.stat(fullPath, function (err, stats) {
-        todo--;
-        if (!self.isIgnored(file, fullPath)) {
-          if (stats.isFile()) {
-            toPush.push(fullPath);
-          } else if (stats.isDirectory()) {
-            self.paths.push(fullPath);
+    var self = this;
+    var current = stack.pop();
+    fs.readdir(current, function (err, paths) {
+      if (err) {
+        return next(err);
+      }
+      if (!paths.length) {
+        // this directory is empty
+        return next();
+      }
+     var todo = paths.length;
+     paths.forEach(function (file) {
+        var fullPath = path.join(current, file);
+        fs.stat(fullPath, function (err, stats) {
+          todo--;
+          if (err) {
+            return next(err);
           }
-        }
-        if (!todo) {
-          if (!toPush.length) {
-            self.inProgress--;
-            self._read();
-         } else {
-          var full;
-          toPush.forEach(function (thing) {
-            if(!self.push(thing)) {
-              full = true;
+          if (!isIgnored(file, fullPath)) {
+            if (stats.isFile()) {
+              self.push(fullPath);
+            } else if (stats.isDirectory()) {
+              stack.push(fullPath);
             }
-          });
-          if (!full) {
-            self.inProgress--;
-            self._read();
           }
-         }
-       }
+          if (!todo) {
+            next();
+          }
+        });
       });
     });
   });
-};
-SpiderStream.prototype.ignoreList = [
-  '.git',
-  '.DS_Store',
-  '*~'
-];
-SpiderStream.prototype.isIgnored = function (thing) {
-  return this.ignoreList.some(function (term) {
-    return minimatch(thing, term);
-  });
-};
+}
