@@ -1,6 +1,6 @@
 var fs = require('fs');
 var path = require('path');
-var noms = require('noms');
+var noms = require('noms').obj;
 var minimatch = require('minimatch');
 
 module.exports = spiderStream;
